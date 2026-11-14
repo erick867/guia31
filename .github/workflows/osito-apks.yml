@@ -16,15 +16,18 @@ jobs:
         with:
           distribution: temurin
           java-version: '17'
-      - name: Android SDK
-        uses: android-actions/setup-android@v3
-      - name: Instalar plataforma
-        run: sdkmanager --install 'platforms;android-35' 'build-tools;35.0.0'
+      - name: Android SDK incluido en Ubuntu
+        run: |
+          echo "ANDROID_HOME=${ANDROID_HOME:-/usr/local/lib/android/sdk}" >> "$GITHUB_ENV"
+          which sdkmanager
+          sdkmanager --version
+          yes | sdkmanager --licenses >/dev/null || true
+          sdkmanager --install 'platforms;android-35' 'build-tools;35.0.0'
       - name: Gradle 8.10.2
         uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '8.10.2'
-      - name: Reconstruir el proyecto y verificar integridad
+      - name: Reconstruir proyecto y verificar integridad
         run: |
           mkdir -p osito-source
           cat osito-apk-build/chunk*.b64 | base64 -d > /tmp/osito.tar.xz
