@@ -1,0 +1,47 @@
+name: Osito LIVE - compilar dos APK
+on:
+  push:
+    branches: [osito-live-apks-v0-1]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  compile:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+      - name: Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Android SDK
+        uses: android-actions/setup-android@v3
+      - name: Instalar plataforma
+        run: sdkmanager --install 'platforms;android-35' 'build-tools;35.0.0'
+      - name: Gradle 8.10.2
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.10.2'
+      - name: Reconstruir el proyecto y verificar integridad
+        run: |
+          mkdir -p osito-source
+          cat osito-apk-build/chunk*.b64 | base64 -d > /tmp/osito.tar.xz
+          echo 'd310d955ab216479744e1abb4a1f49ff1050e17eaef07c7a0fd82e379fb73d10  /tmp/osito.tar.xz' | sha256sum --check
+          tar -xJf /tmp/osito.tar.xz -C osito-source
+      - name: Compilar APK Studio y Control
+        working-directory: osito-source
+        run: gradle --no-daemon --stacktrace :studio:assembleDebug :control:assembleDebug
+      - name: Publicar Osito LIVE Studio
+        uses: actions/upload-artifact@v4
+        with:
+          name: Osito-LIVE-Studio-Oppo-v0.1.0
+          path: osito-source/studio/build/outputs/apk/debug/studio-debug.apk
+          if-no-files-found: error
+      - name: Publicar Osito LIVE Control
+        uses: actions/upload-artifact@v4
+        with:
+          name: Osito-LIVE-Control-Cubot-v0.1.0
+          path: osito-source/control/build/outputs/apk/debug/control-debug.apk
+          if-no-files-found: error
