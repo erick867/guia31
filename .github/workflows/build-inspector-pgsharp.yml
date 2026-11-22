@@ -18,6 +18,9 @@ jobs:
         with:
           distribution: temurin
           java-version: '17'
+      - uses: android-actions/setup-android@v4
+        with:
+          packages: 'platform-tools'
       - name: Preparar Android SDK
         run: |
           export PATH="/usr/local/lib/android/sdk/cmdline-tools/16.0/bin:$PATH"
