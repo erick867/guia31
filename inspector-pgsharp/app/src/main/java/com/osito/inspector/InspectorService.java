@@ -14,7 +14,8 @@ import java.util.Locale;
 
 public class InspectorService extends AccessibilityService {
   private WindowManager wm;
-  private TextView bubble;
+  private TextView bubble, pinButton;
+  private long pinClickStarted=0;
   private final Handler handler=new Handler(Looper.getMainLooper());
   private long lastChanged=0;
   private static final int LIMIT=180;
@@ -38,6 +39,14 @@ public class InspectorService extends AccessibilityService {
       return;
     }
     show();
+    if(pinClickStarted>0 && System.currentTimeMillis()-pinClickStarted<4000
+      && type==AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED
+      && String.valueOf(e.getClassName()).contains("AlertDialog")){
+        AccessibilityNodeInfo dialog=getRootInActiveWindow();
+        String title = findTitle(dialog,0);
+        LogStore.add(this,"PIN resultado: ventana AlertDialog abierta; titulo="+title);
+        pinClickStarted=0;
+    }
     if(type==AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED){
       long t=System.currentTimeMillis();
       if(t-lastChanged<1400)return;lastChanged=t;
@@ -60,6 +69,67 @@ public class InspectorService extends AccessibilityService {
     return s.toString();
   }
   int d(int n){return (int)(n*getResources().getDisplayMetrics().density+.5f);}
+
+  private String findTitle(AccessibilityNodeInfo n,int depth){
+    if(n==null || depth>16)return "no detectado";
+    if("android:id/alertTitle".equals(n.getViewIdResourceName()))return safe(n.getText());
+    for(int i=0;i<n.getChildCount();i++){
+      String t=findTitle(n.getChild(i),depth+1);
+      if(!"no detectado".equals(t))return t;
+    }
+    return "no detectado";
+  }
+  private AccessibilityNodeInfo findPin(AccessibilityNodeInfo n,int depth,int[] seen){
+    if(n==null || depth>22 || ++seen[0]>1000)return null;
+    CharSequence p=n.getPackageName();
+    if(p!=null && LogStore.target(this).equals(p.toString())
+       && n.isClickable() && n.isEnabled() && "android.widget.LinearLayout".contentEquals(n.getClassName())){
+       Rect b=new Rect();n.getBoundsInScreen(b);
+       android.util.DisplayMetrics m=getResources().getDisplayMetrics();
+       float cx=b.centerX()/(float)m.widthPixels,cy=b.centerY()/(float)m.heightPixels;
+       float bw=b.width()/(float)m.widthPixels,bh=b.height()/(float)m.heightPixels;
+       if(cx>0.02f && cx<0.11f && cy>0.27f && cy<0.37f
+          && bw>0.04f && bw<0.13f && bh>0.02f && bh<0.06f){
+          AccessibilityNodeInfo parent=n.getParent();
+          if(parent!=null && "android.widget.LinearLayout".contentEquals(parent.getClassName())){
+            Rect a=new Rect();parent.getBoundsInScreen(a);
+            if(a.height()>(int)(m.heightPixels*.2f) && Math.abs(a.centerX()-b.centerX())<m.widthPixels*.04f){
+              LogStore.add(this,"PIN: candidato detectado "+desc(n)+" PADRE "+desc(parent));
+              return n;
+            }
+          }
+       }
+    }
+    for(int i=0;i<n.getChildCount();i++){
+       AccessibilityNodeInfo child=findPin(n.getChild(i),depth+1,seen);
+       if(child!=null)return child;
+    }
+    return null;
+  }
+  private void testPin(){
+    AccessibilityNodeInfo candidate=findPin(getRootInActiveWindow(),0,new int[1]);
+    if(candidate==null){
+      java.util.List<AccessibilityWindowInfo> windows=getWindows();
+      if(windows!=null)for(AccessibilityWindowInfo w:windows){
+        if(w.getType()!=AccessibilityWindowInfo.TYPE_APPLICATION)continue;
+        AccessibilityNodeInfo root=w.getRoot();
+        candidate=findPin(root,0,new int[1]);
+        if(candidate!=null)break;
+      }
+    }
+    if(candidate==null){
+      LogStore.add(this,"PIN: no se encontró el control del panel con los datos de la prueba anterior.");
+      Toast.makeText(this,"Pin no encontrado: usá SCAN",Toast.LENGTH_LONG).show();
+      return;
+    }
+    try {
+       boolean clicked=candidate.performAction(AccessibilityNodeInfo.ACTION_CLICK);
+       LogStore.add(this,"PIN ACTION_CLICK solicitado="+clicked+"; comprobando AlertDialog...");
+       if(clicked){pinClickStarted=System.currentTimeMillis();}
+       Toast.makeText(this,clicked?"Toque enviado al pin":"No fue posible pulsar el pin",Toast.LENGTH_SHORT).show();
+    }catch(Exception ex){LogStore.add(this,"PIN error al pulsar: "+ex);Toast.makeText(this,"Error al pulsar PIN",Toast.LENGTH_SHORT).show();}
+  }
+
   private void show(){
     if(bubble!=null || wm==null)return;
     handler.post(()->{
@@ -72,11 +142,20 @@ public class InspectorService extends AccessibilityService {
         WindowManager.LayoutParams p=new WindowManager.LayoutParams(d(65),d(65),WindowManager.LayoutParams.TYPE_ACCESSIBILITY_OVERLAY,WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE | WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL,PixelFormat.TRANSLUCENT);
         p.gravity=Gravity.TOP|Gravity.END;p.y=d(145);p.x=d(10);
         wm.addView(b,p);bubble=b;
+        TextView pin=new TextView(this);
+        pin.setText("PIN");pin.setTextSize(15);pin.setTextColor(Color.WHITE);pin.setGravity(Gravity.CENTER);
+        GradientDrawable orange=new GradientDrawable();orange.setShape(GradientDrawable.OVAL);orange.setColor(Color.rgb(209,104,20));orange.setStroke(d(2),Color.WHITE);pin.setBackground(orange);
+        WindowManager.LayoutParams pp=new WindowManager.LayoutParams(d(65),d(65),WindowManager.LayoutParams.TYPE_ACCESSIBILITY_OVERLAY,WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE | WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL,PixelFormat.TRANSLUCENT);
+        pp.gravity=Gravity.TOP|Gravity.END;pp.y=d(220);pp.x=d(10);
+        pin.setOnClickListener(v->testPin());wm.addView(pin,pp);pinButton=pin;
       }catch(Exception ex){LogStore.add(this,"No apareció SCAN: "+ex);}
     });
   }
   private void hide(){
-    handler.post(()->{if(bubble!=null){try{wm.removeView(bubble);}catch(Exception x){}bubble=null;}});
+    handler.post(()->{
+      if(bubble!=null){try{wm.removeView(bubble);}catch(Exception x){}bubble=null;}
+      if(pinButton!=null){try{wm.removeView(pinButton);}catch(Exception x){}pinButton=null;}
+    });
   }
   private void scan(){
     AccessibilityNodeInfo root=getRootInActiveWindow();
