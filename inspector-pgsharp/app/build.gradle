@@ -3,7 +3,7 @@ android {
   namespace 'com.osito.inspector'
   compileSdk 35
   defaultConfig {
-    applicationId 'com.osito.inspector'
+    applicationId 'com.osito.inspector.pintest'
     minSdk 29
     targetSdk 35
     versionCode 2
