@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-  <string name="app_name">Inspector PGSharp</string>
+  <string name="app_name">Inspector Teleport Test</string>
   <string name="accessibility_description">Registra localmente los botones y eventos visibles de la aplicación seleccionada. No lee código privado ni modifica aplicaciones.</string>
 </resources>
