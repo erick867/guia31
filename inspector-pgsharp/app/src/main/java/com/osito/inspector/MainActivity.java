@@ -44,7 +44,7 @@ public class MainActivity extends Activity {
   void refresh(){
     if(status==null)return;
     String en=Settings.Secure.getString(getContentResolver(),Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES);
-    boolean active=en!=null&&en.toLowerCase().contains("com.osito.inspector");
+    boolean active=en!=null&&en.toLowerCase().contains("com.osito.inspector.pintest");
     status.setText(active?"● Inspector activo":"○ Activá Inspector en Accesibilidad");
     if(log!=null){String s=LogStore.read(this);log.setText(s.length()>20000?s.substring(s.length()-20000):s);}
   }
