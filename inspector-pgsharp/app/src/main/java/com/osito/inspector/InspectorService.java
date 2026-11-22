@@ -71,6 +71,13 @@ public class InspectorService extends AccessibilityService {
   }
   int d(int n){return (int)(n*getResources().getDisplayMetrics().density+.5f);}
 
+  private boolean hasViewId(AccessibilityNodeInfo n,String id,int depth){
+    if(n==null||depth>18)return false;
+    if(id.equals(n.getViewIdResourceName()))return true;
+    for(int i=0;i<n.getChildCount();i++)
+      if(hasViewId(n.getChild(i),id,depth+1))return true;
+    return false;
+  }
   private String findTitle(AccessibilityNodeInfo n,int depth){
     if(n==null || depth>16)return "no detectado";
     if("android:id/alertTitle".equals(n.getViewIdResourceName()))return safe(n.getText());
@@ -87,15 +94,22 @@ public class InspectorService extends AccessibilityService {
        && n.isClickable() && n.isEnabled() && "android.widget.LinearLayout".contentEquals(n.getClassName())){
        Rect b=new Rect();n.getBoundsInScreen(b);
        android.util.DisplayMetrics m=getResources().getDisplayMetrics();
-       float cx=b.centerX()/(float)m.widthPixels,cy=b.centerY()/(float)m.heightPixels;
+       float cx=b.centerX()/(float)m.widthPixels;
        float bw=b.width()/(float)m.widthPixels,bh=b.height()/(float)m.heightPixels;
-       if(cx>0.02f && cx<0.11f && cy>0.27f && cy<0.37f
-          && bw>0.04f && bw<0.13f && bh>0.02f && bh<0.06f){
+       // El boton Teleport es el SEXTO elemento del panel (indice 5).
+       // Probar su posicion DENTRO de la barra, no el porcentaje total de pantalla.
+       // La prueba anterior seleccionaba el CUARTO elemento (Mapa).
+       if(cx>0.02f && cx<0.11f && bw>0.04f && bw<0.13f && bh>0.02f && bh<0.06f){
           AccessibilityNodeInfo parent=n.getParent();
           if(parent!=null && "android.widget.LinearLayout".contentEquals(parent.getClassName())){
             Rect a=new Rect();parent.getBoundsInScreen(a);
-            if(a.height()>(int)(m.heightPixels*.2f) && Math.abs(a.centerX()-b.centerX())<m.widthPixels*.04f){
-              LogStore.add(this,"PIN: candidato detectado "+desc(n)+" PADRE "+desc(parent));
+            float relativeY=a.height()>0?(b.centerY()-a.top)/(float)a.height():-1;
+            float relativeH=a.height()>0?b.height()/(float)a.height():-1;
+            if(a.height()>(int)(m.heightPixels*.2f)
+              && Math.abs(a.centerX()-b.centerX())<m.widthPixels*.04f
+              && relativeY>0.52f && relativeY<0.58f
+              && relativeH>0.06f && relativeH<0.14f){
+              LogStore.add(this,"TELEPORT: sexto control encontrado (relY="+relativeY+") "+desc(n)+" PADRE "+desc(parent));
               return n;
             }
           }
@@ -125,9 +139,24 @@ public class InspectorService extends AccessibilityService {
     }
     try {
        boolean clicked=candidate.performAction(AccessibilityNodeInfo.ACTION_CLICK);
-       LogStore.add(this,"PIN ACTION_CLICK solicitado="+clicked+"; comprobando AlertDialog...");
-       if(clicked){pinClickStarted=System.currentTimeMillis();}
-       Toast.makeText(this,clicked?"Toque enviado al pin":"No fue posible pulsar el pin",Toast.LENGTH_SHORT).show();
+       LogStore.add(this,"TELEPORT ACTION_CLICK="+clicked+"; esperando verificar titulo correcto...");
+       if(clicked){
+         pinClickStarted=System.currentTimeMillis();
+         handler.postDelayed(()->{
+            AccessibilityNodeInfo root=getRootInActiveWindow();
+            String title=findTitle(root,0);
+            if("Teletransportarse".equalsIgnoreCase(title)){
+               LogStore.add(this,"RESULTADO TELEPORT: CORRECTO, ventana Teletransportarse detectada.");
+               Toast.makeText(this,"TELEPORT correcto",Toast.LENGTH_LONG).show();
+            }else if(hasViewId(root,"me.underw.hp:id/hl_mbmap_layout",0)){
+               LogStore.add(this,"RESULTADO TELEPORT: ERROR, se abrio Mapa, no Teletransportarse.");
+               Toast.makeText(this,"Se abrio Mapa, revisar log",Toast.LENGTH_LONG).show();
+            }else{
+               LogStore.add(this,"RESULTADO TELEPORT: ventana sin confirmar; titulo="+title);
+            }
+         },850);
+       }
+       Toast.makeText(this,clicked?"Toque enviado al sexto boton":"No fue posible pulsar Teleport",Toast.LENGTH_SHORT).show();
     }catch(Exception ex){LogStore.add(this,"PIN error al pulsar: "+ex);Toast.makeText(this,"Error al pulsar PIN",Toast.LENGTH_SHORT).show();}
   }
 
