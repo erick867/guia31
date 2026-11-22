@@ -1,6 +1,7 @@
 package com.osito.inspector;
 import android.accessibilityservice.*;
 import android.view.accessibility.*;
+import android.view.accessibility.AccessibilityWindowInfo;
 import android.view.*;
 import android.widget.*;
 import android.os.*;
