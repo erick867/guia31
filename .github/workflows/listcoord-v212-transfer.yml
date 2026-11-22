@@ -1,0 +1,32 @@
+name: ListCoord V2.12 unsigned transfer and tools
+on:
+  push:
+    branches: [listcoord-v212-build-transfer]
+permissions:
+  contents: read
+jobs:
+  transfer:
+    runs-on: ubuntu-latest
+    env:
+      ANDROID_HOME: /usr/local/lib/android/sdk
+      ANDROID_SDK_ROOT: /usr/local/lib/android/sdk
+    steps:
+      - uses: actions/checkout@v4
+      - uses: android-actions/setup-android@v4
+        with:
+          packages: 'platform-tools'
+      - name: Instalar firmador Android
+        run: sdkmanager 'build-tools;35.0.0'
+      - name: Reconstruir APK sin firmar
+        run: |
+          base64 -d listcoord-transfer/unsigned-apk-v212.b64 > ListCoord-V2.12-unsigned-aligned.apk
+          cp "$ANDROID_HOME/build-tools/35.0.0/lib/apksigner.jar" apksigner.jar
+          test -s ListCoord-V2.12-unsigned-aligned.apk
+          sha256sum ListCoord-V2.12-unsigned-aligned.apk
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ListCoord-V2.12-unsigned-and-signer
+          path: |
+            ListCoord-V2.12-unsigned-aligned.apk
+            apksigner.jar
+          retention-days: 1
