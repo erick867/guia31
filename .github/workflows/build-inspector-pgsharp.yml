@@ -33,15 +33,15 @@ jobs:
         run: gradle assembleDebug --no-daemon --stacktrace
       - name: Renombrar APK
         run: |
-          cp inspector-pgsharp/app/build/outputs/apk/debug/app-debug.apk Inspector-PGSharp-v1.1.apk
-          sha256sum Inspector-PGSharp-v1.1.apk
+          cp inspector-pgsharp/app/build/outputs/apk/debug/app-debug.apk Inspector-PGSharp-PIN-v1.2.apk
+          sha256sum Inspector-PGSharp-PIN-v1.2.apk
       - uses: actions/upload-artifact@v4
         with:
           name: Inspector-PGSharp-APK
-          path: Inspector-PGSharp-v1.1.apk
+          path: Inspector-PGSharp-PIN-v1.2.apk
       - name: Publicar enlace directo de instalador
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release create inspector-pgsharp-pin-test-v1.1 Inspector-PGSharp-v1.1.apk --title "Inspector PGSharp v1.1" --target "$GITHUB_SHA" --prerelease --notes "APK de prueba para inspeccionar controles de accesibilidad PGSharp, sin acceso a Internet." ||
-          gh release upload inspector-pgsharp-pin-test-v1.1 Inspector-PGSharp-v1.1.apk --clobber
+          gh release create inspector-pgsharp-pinfix-v1.2 Inspector-PGSharp-PIN-v1.2.apk --title "Inspector PGSharp PIN v1.2" --target "$GITHUB_SHA" --prerelease --notes "APK de prueba para inspeccionar controles de accesibilidad PGSharp, sin acceso a Internet." ||
+          gh release upload inspector-pgsharp-pinfix-v1.2 Inspector-PGSharp-PIN-v1.2.apk --clobber
