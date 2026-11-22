@@ -31,7 +31,7 @@ public class MainActivity extends Activity {
       if(!p.matches("[a-zA-Z][a-zA-Z0-9_]*(\\.[a-zA-Z][a-zA-Z0-9_]*)+")) {Toast.makeText(this,"Paquete incorrecto",1).show();return;}
       LogStore.target(this,p);LogStore.add(this,"Objetivo: "+p);refresh();
     });
-    col.addView(text("3. Abrí PGSharp, pulsá Teleport y luego el botón flotante SCAN. Después volvé acá y exportá el registro.",14));
+    col.addView(text("3. Abrí PGSharp con el panel visible y SIN abrir manualmente Teleport. Tocá el botón flotante naranja PIN. Si abre Teletransportarse, la prueba funcionó. Exportá el TXT al terminar.",14));
     btn(col,"Actualizar eventos",v->refresh());
     btn(col,"Exportar registro TXT",v->{Intent i=new Intent(Intent.ACTION_CREATE_DOCUMENT);i.addCategory(Intent.CATEGORY_OPENABLE);i.setType("text/plain");i.putExtra(Intent.EXTRA_TITLE,"inspector_pgsharp.txt");startActivityForResult(i,42);});
     btn(col,"Compartir registro",v->{Intent i=new Intent(Intent.ACTION_SEND);i.setType("text/plain");i.putExtra(Intent.EXTRA_TEXT,LogStore.read(this));startActivity(Intent.createChooser(i,"Enviar diagnóstico"));});
@@ -44,7 +44,7 @@ public class MainActivity extends Activity {
   void refresh(){
     if(status==null)return;
     String en=Settings.Secure.getString(getContentResolver(),Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES);
-    boolean active=en!=null&&en.toLowerCase().contains("com.osito.inspector.pintest");
+    boolean active=en!=null&&en.toLowerCase().contains("com.osito.inspector.teleporttest");
     status.setText(active?"● Inspector activo":"○ Activá Inspector en Accesibilidad");
     if(log!=null){String s=LogStore.read(this);log.setText(s.length()>20000?s.substring(s.length()-20000):s);}
   }
