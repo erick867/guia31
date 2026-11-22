@@ -1,0 +1,32 @@
+name: Transfer signed-ready ListCoord Speed v2.12
+on:
+  push:
+    branches: [listcoord-v212-speed-transfer]
+permissions:
+  contents: read
+jobs:
+  transfer:
+    runs-on: ubuntu-latest
+    env:
+      ANDROID_HOME: /usr/local/lib/android/sdk
+      ANDROID_SDK_ROOT: /usr/local/lib/android/sdk
+    steps:
+      - uses: actions/checkout@v4
+      - uses: android-actions/setup-android@v4
+        with:
+          packages: 'platform-tools'
+      - name: Install tools
+        run: sdkmanager 'build-tools;35.0.0'
+      - name: Decode unsigned APK
+        run: |
+          base64 -d listcoord-transfer/v212-speed-base64.txt > ListCoord-V2.12-Speed-unsigned.apk
+          cp "$ANDROID_HOME/build-tools/35.0.0/lib/apksigner.jar" apksigner.jar
+          test -s ListCoord-V2.12-Speed-unsigned.apk
+          sha256sum ListCoord-V2.12-Speed-unsigned.apk
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ListCoord-V2.12-Speed-unsigned
+          path: |
+            ListCoord-V2.12-Speed-unsigned.apk
+            apksigner.jar
+          retention-days: 1
