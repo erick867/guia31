@@ -1,0 +1,33 @@
+name: ListCoord APK temporary transfer
+on:
+  push:
+    branches: [listcoord-v211-build-transfer]
+permissions:
+  contents: read
+jobs:
+  portable-tools:
+    runs-on: ubuntu-latest
+    env:
+      ANDROID_HOME: /usr/local/lib/android/sdk
+      ANDROID_SDK_ROOT: /usr/local/lib/android/sdk
+    steps:
+      - uses: actions/checkout@v4
+      - uses: android-actions/setup-android@v4
+        with:
+          packages: 'platform-tools'
+      - name: Preparar firmador Android
+        run: sdkmanager 'build-tools;35.0.0'
+      - name: Reconstruir compilacion sin firma
+        run: |
+          base64 -d listcoord-transfer/unsigned-apk.b64 > ListCoord-V2.11-unsigned-aligned.apk
+          cp "$ANDROID_HOME/build-tools/35.0.0/lib/apksigner.jar" apksigner.jar
+          test -s ListCoord-V2.11-unsigned-aligned.apk
+          test -s apksigner.jar
+          sha256sum ListCoord-V2.11-unsigned-aligned.apk
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ListCoord-V2.11-unsigned-and-signer
+          path: |
+            ListCoord-V2.11-unsigned-aligned.apk
+            apksigner.jar
+          retention-days: 1
